@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Doctors } from "@/_features/register/types";
-import { Doc } from "../../../../../convex/_generated/dataModel";
+import { Doc } from "../../../../convex/_generated/dataModel";
 
 type RequestSuccessProps = {
   appointments: Doc<"appointments">;

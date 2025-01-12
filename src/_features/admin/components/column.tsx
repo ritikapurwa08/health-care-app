@@ -2,13 +2,24 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import Image from "next/image";
-import { Doc } from "../../../../convex/_generated/dataModel";
+
 import { StatusBadge } from "./status-badge";
 import { Doctors } from "@/_features/register/types";
-import { AppointmentModal } from "@/_features/appointment/components/appointment-modal";
-import { format } from "date-fns";
+import AppointmentModalNew from "@/_features/appointment/components/appointment-modal-new";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { MoreVerticalIcon } from "lucide-react";
+import { Doc } from "../../../../convex/_generated/dataModel";
+import { formatDateTime } from "@/lib/utils";
 
-type Appointment = Doc<"appointments">;
+type Appointment = Doc<"appointments"> & {
+  name?: string[];
+};
 
 export const columns: ColumnDef<Appointment>[] = [
   {
@@ -22,7 +33,7 @@ export const columns: ColumnDef<Appointment>[] = [
     header: "Patient",
     cell: ({ row }) => {
       const appointment = row.original;
-      return <p className="text-14-medium ">{appointment.patientId}</p>;
+      return <p className="text-14-medium ">{appointment.name}</p>;
     },
   },
   {
@@ -42,12 +53,10 @@ export const columns: ColumnDef<Appointment>[] = [
     header: "Appointment",
     cell: ({ row }) => {
       const appointment = row.original;
-      const dates = format(
-        new Date(appointment.schedule),
-        "MMMM dd, yyyy h:mm a"
-      );
 
-      return <p className="text-14-regular min-w-[100px]">{dates}</p>;
+      const date = formatDateTime(appointment.schedule).dateTime;
+
+      return <p className="text-14-regular min-w-[100px]">{date}</p>;
     },
   },
   {
@@ -84,22 +93,45 @@ export const columns: ColumnDef<Appointment>[] = [
 
       return (
         <div className="flex gap-1">
-          <AppointmentModal
-            patientId={appointment.patientId}
-            userId={appointment.userId}
-            appointment={appointment}
-            type="schedule"
-            title="Schedule Appointment"
-            description="Please confirm the following details to schedule."
-          />
-          <AppointmentModal
-            patientId={appointment.patientId}
-            userId={appointment.userId}
-            appointment={appointment}
-            type="cancel"
-            title="Cancel Appointment"
-            description="Are you sure you want to cancel your appointment?"
-          />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="icon" variant="outline">
+                <MoreVerticalIcon />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              className="bg-dark-400 text-light-200 "
+              side="left"
+            >
+              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                <AppointmentModalNew
+                  patientId={appointment.patientId}
+                  userId={appointment.userId}
+                  appointment={appointment}
+                  appointmentId={appointment._id}
+                  type="schedule"
+                />
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                <AppointmentModalNew
+                  patientId={appointment.patientId}
+                  userId={appointment.userId}
+                  appointment={appointment}
+                  appointmentId={appointment._id}
+                  type="update"
+                />
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                <AppointmentModalNew
+                  patientId={appointment.patientId}
+                  userId={appointment.userId}
+                  appointment={appointment}
+                  appointmentId={appointment._id}
+                  type="cancel"
+                />
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       );
     },

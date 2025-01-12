@@ -54,6 +54,7 @@ export const scheduleAppointment = mutation({
   args: {
     appointmentId: v.id("appointments"), // ID of the appointment to schedule
     schedule: v.optional(v.string()), // Optional updated schedule
+    primaryPhysician: v.optional(v.string()), // Optional updated primary physician
   },
   handler: async (ctx, args) => {
     const { appointmentId, schedule } = args;
@@ -62,6 +63,7 @@ export const scheduleAppointment = mutation({
     await ctx.db.patch(appointmentId, {
       status: "scheduled",
       schedule: schedule, // Update the schedule if provided
+      primaryPhysician: args.primaryPhysician, // Update the primary physician if provided
     });
 
     return appointmentId;
@@ -167,8 +169,22 @@ export const getAppointmentCounts = query({
 export const getAllAppointments = query({
   args: {},
   handler: async (ctx) => {
+    // Fetch all appointments
     const appointments = await ctx.db.query("appointments").collect();
-    return appointments;
+
+    // Map through appointments and fetch patient details
+    const appointmentsWithPatientNames = await Promise.all(
+      appointments.map(async (appointment) => {
+        // Fetch the patient details using the patientId from the patients table
+        const patient = await ctx.db.get(appointment.patientId);
+        return {
+          ...appointment,
+          patientName: patient ? patient.name : "Unknown", // Add patient name to the appointment object
+        };
+      })
+    );
+
+    return appointmentsWithPatientNames;
   },
 });
 

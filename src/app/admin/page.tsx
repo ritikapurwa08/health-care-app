@@ -68,7 +68,11 @@ const AdminPage = () => {
 
         {appointments && (
           <section className="admin-table">
-            <DataTable columns={columns} data={appointments} />
+            <DataTable
+              columns={columns}
+              name={appointments.map((appointment) => appointment.patientName)}
+              data={appointments}
+            />
           </section>
         )}
       </main>

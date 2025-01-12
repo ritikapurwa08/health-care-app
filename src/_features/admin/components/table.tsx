@@ -25,6 +25,7 @@ import { decryptKey } from "@/lib/utils";
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
+  name?: string[];
 }
 
 export function DataTable<TData, TValue>({

@@ -1,13 +1,11 @@
 import { z } from "zod";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { UseUserSignInForm } from "../types";
 import { Form } from "@/components/ui/form";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useConvexAuth } from "convex/react";
-import { UseGetCurrentUserHook } from "../hooks/user-query-hooks";
 import CustomInput from "@/_features/form/custom-input";
 import CustomPasswordInput from "@/_features/form/custom-password-input";
 import SubmitButton from "@/_features/form/submit-button";
@@ -19,8 +17,6 @@ const UserSignIn = () => {
   const { signIn } = useAuthActions();
   const router = useRouter();
   const { toast } = useToast();
-  const { isAuthenticated } = useConvexAuth();
-  const { user } = UseGetCurrentUserHook();
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { form, SignInZodSchema } = UseUserSignInForm();
@@ -30,28 +26,28 @@ const UserSignIn = () => {
     setIsLoading(true);
     setError("");
 
-    try {
-      await signIn("password", {
-        email: formValues.email,
-        password: formValues.password,
-        flow: "signIn",
+    await signIn("password", {
+      email: formValues.email,
+      password: formValues.password,
+      flow: "signIn",
+    })
+      .then(() => {
+        toast({
+          title: "Sign In Successful",
+          description: "You have been signed in.",
+        });
+        router.push("patients/register");
+      })
+      .catch((err) => {
+        setError((err as Error).message || "An error occurred during sign in.");
+      })
+      .finally(() => {
+        setIsLoading(false);
+        setError("");
       });
 
-      toast({
-        title: "Sign In Successful",
-        description: "You have been signed in.",
-      });
-    } catch (err: unknown) {
-      setError((err as Error).message || "An error occurred during sign in.");
-    } finally {
-      setIsLoading(false);
-    }
+    setIsLoading(false);
   };
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      router.push(`/patients/register`);
-    }
-  }, [isAuthenticated, user, router]);
 
   const handleShowPassword = () => {
     setShowPassword(!showPassword);

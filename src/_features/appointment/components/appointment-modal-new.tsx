@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Id } from "../../../../convex/_generated/dataModel";
+import { Doc, Id } from "../../../../convex/_generated/dataModel";
 import {
   CancelAppointmentHook,
   CreateAppointmentHook,
@@ -18,12 +18,16 @@ import CustomDatePicker from "@/_features/form/custom-date-picker";
 import CustomSelect from "@/_features/form/custom-select";
 import { Doctors } from "@/_features/register/types";
 import { Form } from "@/components/ui/form";
+import RequestSuccess from "./success-appointment-window";
+
+type AppointmentDoc = Doc<"appointments">;
 
 type AppointmentModalNewProps = {
   userId: Id<"users">;
   patientId: Id<"patients">;
-  type: "create" | "update" | "schedule" | "remove";
+  type: "create" | "update" | "schedule" | "remove" | "cancel";
   appointmentId?: Id<"appointments">;
+  appointment?: AppointmentDoc;
 };
 
 const AppointmentModalNew = ({
@@ -31,18 +35,18 @@ const AppointmentModalNew = ({
   type,
   userId,
   appointmentId,
+  appointment,
 }: AppointmentModalNewProps) => {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
-
   const { mutate: create, isPending: creating } = CreateAppointmentHook();
   const { mutate: update, isPending: updating } = UpdateAppointmentHook();
   const { mutate: remove, isPending: removing } = RemoveAppointmentHook();
   const { mutate: schedule, isPending: scheduling } = ScheduleAppointmentHook();
   const { mutate: cancel, isPending: cancelling } = CancelAppointmentHook();
 
-  const { form } = UseAppointmentZodForm();
+  const { form } = UseAppointmentZodForm({ open, appointmentId });
 
   const onSubmitHandle = (formValues: Appointment) => {
     if (type === "create") {
@@ -62,13 +66,20 @@ const AppointmentModalNew = ({
               description: "The appointment has been successfully created.",
               variant: "default",
             });
+            setInterval(() => {
+              return (
+                <div>
+                  {appointment && <RequestSuccess appointments={appointment} />}
+                </div>
+              );
+            }, 3000);
             setOpen(false); // Close the dialog
           },
           onError: (error) => {
             toast({
-              title: "Appointment Created",
-              description: `${error.message} The appointment has been successfully created.`,
-              variant: "default",
+              title: "Error",
+              description: `Failed to create appointment: ${error.message}`,
+              variant: "destructive",
             });
             setError(error.message);
           },
@@ -78,7 +89,10 @@ const AppointmentModalNew = ({
       update(
         {
           appointmentId,
-          ...formValues,
+          primaryPhysician: formValues.primaryPhysician,
+          schedule: formValues.schedule,
+          reason: formValues.reason,
+          note: formValues.note,
         },
         {
           onSuccess: () => {
@@ -90,6 +104,11 @@ const AppointmentModalNew = ({
             setOpen(false); // Close the dialog
           },
           onError: (error) => {
+            toast({
+              title: "Error",
+              description: `Failed to update appointment: ${error.message}`,
+              variant: "destructive",
+            });
             setError(error.message);
           },
         }
@@ -98,7 +117,8 @@ const AppointmentModalNew = ({
       schedule(
         {
           appointmentId,
-          ...formValues,
+          schedule: formValues.schedule,
+          primaryPhysician: formValues.primaryPhysician,
         },
         {
           onSuccess: () => {
@@ -110,6 +130,11 @@ const AppointmentModalNew = ({
             setOpen(false); // Close the dialog
           },
           onError: (error) => {
+            toast({
+              title: "Error",
+              description: `Failed to schedule appointment: ${error.message}`,
+              variant: "destructive",
+            });
             setError(error.message);
           },
         }
@@ -127,6 +152,36 @@ const AppointmentModalNew = ({
             setOpen(false); // Close the dialog
           },
           onError: (error) => {
+            toast({
+              title: "Error",
+              description: `Failed to remove appointment: ${error.message}`,
+              variant: "destructive",
+            });
+            setError(error.message);
+          },
+        }
+      );
+    } else if (type === "cancel" && appointmentId) {
+      cancel(
+        {
+          appointmentId,
+          cancellationReason: formValues.cancellationReason,
+        },
+        {
+          onSuccess: () => {
+            toast({
+              title: "Appointment Canceled",
+              description: "The appointment has been successfully canceled.",
+              variant: "default",
+            });
+            setOpen(false); // Close the dialog
+          },
+          onError: (error) => {
+            toast({
+              title: "Error",
+              description: `Failed to cancel appointment: ${error.message}`,
+              variant: "destructive",
+            });
             setError(error.message);
           },
         }
@@ -139,6 +194,7 @@ const AppointmentModalNew = ({
     update: "Update Appointment",
     schedule: "Schedule Appointment",
     remove: "Remove Appointment",
+    cancel: "Cancel Appointment",
   }[type];
 
   const FinalLoading =
@@ -154,13 +210,14 @@ const AppointmentModalNew = ({
             type === "create" && "bg-yellow-400",
             type === "update" && "bg-green-500",
             type === "schedule" && "bg-green-500",
-            type === "remove" && "bg-red-500"
+            type === "remove" && "bg-red-500",
+            type === "cancel" && "bg-red-500"
           )}
         >
           {buttonLabel}
         </Button>
       </DialogTrigger>
-      <DialogContent className="bg-dark-300 text-light-200 remove-scrollbar overflow-y-auto max-h-[80vh]">
+      <DialogContent className="bg-dark-300 text-light-200 remove-scrollbar overflow-y-auto min-h-[80vh] max-h-[80vh]">
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(onSubmitHandle)}
@@ -175,7 +232,8 @@ const AppointmentModalNew = ({
               </section>
             )}
 
-            {type !== "remove" && (
+            {/* Show fields based on the type */}
+            {type !== "remove" && type !== "cancel" && (
               <>
                 <CustomSelect
                   options={Doctors}
@@ -193,27 +251,33 @@ const AppointmentModalNew = ({
                   dateFormat="MM/dd/yyyy  -  h:mm aa"
                 />
 
-                <div
-                  className={`flex flex-col gap-6  ${
-                    type === "create" && "xl:flex-row"
-                  }`}
-                >
-                  <CustomTextarea
-                    control={form.control}
-                    name="reason"
-                    label="Appointment reason"
-                    placeholder="Annual monthly check-up"
-                  />
+                {type !== "schedule" && (
+                  <>
+                    <CustomTextarea
+                      control={form.control}
+                      name="reason"
+                      label="Appointment reason"
+                      placeholder="Annual monthly check-up"
+                    />
 
-                  <CustomTextarea
-                    control={form.control}
-                    name="note"
-                    label="Comments/notes"
-                    placeholder="Prefer afternoon appointments, if possible"
-                    disabled={type === "schedule"}
-                  />
-                </div>
+                    <CustomTextarea
+                      control={form.control}
+                      name="note"
+                      label="Comments/notes"
+                      placeholder="Prefer afternoon appointments, if possible"
+                    />
+                  </>
+                )}
               </>
+            )}
+
+            {type === "cancel" && (
+              <CustomTextarea
+                control={form.control}
+                name="cancellationReason"
+                label="Reason for cancellation"
+                placeholder="Provide a reason for cancellation"
+              />
             )}
 
             {type === "remove" && (
@@ -233,7 +297,8 @@ const AppointmentModalNew = ({
                 type === "create" && "bg-yellow-400 text-dark-300",
                 type === "update" && "bg-green-500",
                 type === "schedule" && "bg-green-500",
-                type === "remove" && "bg-red-500"
+                type === "remove" && "bg-red-500",
+                type === "cancel" && "bg-red-500"
               )}
             >
               {buttonLabel}

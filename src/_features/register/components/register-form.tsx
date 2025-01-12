@@ -9,7 +9,6 @@ import {
 } from "../types";
 import { UseRegisterPatientHook } from "../hooks/register-interaction-hooks";
 import { Form } from "@/components/ui/form";
-
 import CustomPhoneInput from "@/_features/form/custom-phone-input";
 import CustomDatePicker from "@/_features/form/custom-date-picker";
 import CustomRadioGroup from "@/_features/form/custom-radio-group";

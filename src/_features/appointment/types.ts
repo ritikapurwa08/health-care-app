@@ -1,6 +1,10 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { Id } from "../../../convex/_generated/dataModel";
+import { useQuery } from "convex/react";
+import { api } from "../../../convex/_generated/api";
+import { useEffect } from "react";
 
 export const CreateAppointmentSchema = z.object({
   primaryPhysician: z.string().min(2, "Select at least one doctor"),
@@ -14,7 +18,15 @@ export const CreateAppointmentSchema = z.object({
 });
 export type Appointment = z.infer<typeof CreateAppointmentSchema>;
 
-export const UseAppointmentZodForm = () => {
+type UseAppointmentZodFormProps = {
+  open?: boolean;
+  appointmentId?: Id<"appointments">;
+};
+
+export const UseAppointmentZodForm = ({
+  appointmentId,
+  open,
+}: UseAppointmentZodFormProps) => {
   const form = useForm<Appointment>({
     resolver: zodResolver(CreateAppointmentSchema),
     defaultValues: {
@@ -25,6 +37,23 @@ export const UseAppointmentZodForm = () => {
       cancellationReason: "",
     },
   });
+
+  const existingAppoint = useQuery(
+    api.appointments.getAppointmentById,
+    appointmentId ? { appointmentId } : "skip"
+  );
+
+  useEffect(() => {
+    if (existingAppoint && open) {
+      form.reset({
+        schedule: existingAppoint.schedule,
+        primaryPhysician: existingAppoint.primaryPhysician,
+        reason: existingAppoint.reason,
+        note: existingAppoint.note,
+        cancellationReason: existingAppoint.cancellationReason,
+      });
+    }
+  }, [existingAppoint, form, open]);
 
   return {
     form,
